@@ -1,0 +1,13 @@
+{
+    "verbose": true,
+    "generate_map16": true,
+
+    "slots": 24,
+
+    "method": "VLDC9",
+    "replace_original": true,
+    "omtre_detect": true,
+
+    "custom_dir": "test/main.asm",
+    "bypass_ram_check": true
+}
