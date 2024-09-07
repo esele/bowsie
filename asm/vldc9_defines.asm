@@ -3,7 +3,7 @@
 
 incsrc bowsie_defines.asm       ; don't delete this! it's created during the tool run.
 
-!oam_start_p    = $0070
+!oam_start_p    = $0000
 !oam_start      = $00BC
 !oam_limit      = $01E8
 

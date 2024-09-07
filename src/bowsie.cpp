@@ -3,7 +3,7 @@ import rapidjson;
 import asar;
 
 #define VERSION 1
-#define SUBVER 0
+#define SUBVER 1
 
 using namespace std;
 using namespace rapidjson;
@@ -45,15 +45,15 @@ void format_path(string* str)
     ---
     Output: true if temporary files were removed, false otherwise
 */
-bool cleanup()
+bool cleanup(string tool_folder)
 {
     try
     {
-        filesystem::remove("asm/tmp.asm");
-        filesystem::remove("asm/bowsie_defines.asm");
-        filesystem::remove("asm/macro.asm");
-        filesystem::remove("asm/init_ptrs.bin");
-        filesystem::remove("asm/main_ptrs.bin");
+        filesystem::remove(tool_folder+"asm/tmp.asm");
+        filesystem::remove(tool_folder+"asm/bowsie_defines.asm");
+        filesystem::remove(tool_folder+"asm/macro.asm");
+        filesystem::remove(tool_folder+"asm/init_ptrs.bin");
+        filesystem::remove(tool_folder+"asm/main_ptrs.bin");
         return true;
     }
     catch(filesystem::filesystem_error const & err)
@@ -257,7 +257,7 @@ struct Rom
                 returns true if the patch was successfully applied,
                 false otherwise
     */
-    bool inline_patch(const char * patch_content)
+    bool inline_patch(string tool_folder, const char * patch_content)
     {
         int new_size = rom_size - HEADER_SIZE;
 
@@ -267,8 +267,8 @@ struct Rom
             rom_data.read(&(raw_rom_data[HEADER_SIZE]), rom_size);
         }
 
-        ofstream("asm/tmp.asm").write(patch_content, strlen(patch_content));
-        string tmp_path = filesystem::absolute("asm/tmp.asm").string();
+        ofstream(tool_folder+"asm/tmp.asm").write(patch_content, strlen(patch_content));
+        string tmp_path = filesystem::absolute(tool_folder+"asm/tmp.asm").string();
         bool patch_res = asar_patch(tmp_path.c_str(), &(raw_rom_data[HEADER_SIZE]), MAX_SIZE, &new_size);
 
         if(patch_res)
@@ -794,6 +794,7 @@ int main(int argc, char *argv[])
         println("");
 
     int asar_errcount = 0;
+    string tool_folder = filesystem::absolute(argv[0]).parent_path().string()+"/";
     string rom_name = filesystem::absolute(rom.rom_path).parent_path().string()+"/"+filesystem::path(rom.rom_path).stem().string();
 
     // Misc ROM checks
@@ -813,13 +814,13 @@ int main(int argc, char *argv[])
             ifstream method_patch;
             if(settings.method=="custom")
             {
-                method_patch.open("asm/"+settings.custom_dir, ios::ate);
+                method_patch.open(tool_folder+"asm/"+settings.custom_dir, ios::ate);
                 if(!method_patch)
                     return error("Couldn't open custom method {}. Make sure it's in the asm folder.", settings.custom_dir);
             }
             else
             {
-                method_patch.open("asm/"+settings.method+".asm", ios::ate);
+                method_patch.open(tool_folder+"asm/"+settings.method+".asm", ios::ate);
                 if(!method_patch)
                     return error("Couldn't open {}.asm. Make sure it's in the asm folder.", settings.method);
             }
@@ -848,7 +849,7 @@ int main(int argc, char *argv[])
             clean_patch.append(format("autoclean read3(${0:0>6X})\norg ${0:0>6X}\n    dl $FFFFFF\n", BOWSIE_USED_PTR+clean_offset));
             clean_offset+=3;
         }
-        if(!rom.inline_patch(clean_patch.c_str()))
+        if(!rom.inline_patch(tool_folder, clean_patch.c_str()))
             return error("An error ocurred while cleaning up. Details:\n  {}", asar_geterrors(&asar_errcount)->fullerrdata);
         else if(settings.verbose)
             println("Clean-up done.\n");
@@ -856,7 +857,7 @@ int main(int argc, char *argv[])
     else
     {
         println("First time using BOWSIE! Thank you. :)\n");
-        rom.inline_patch(format("org ${:0>6X} : dd ${:0>8X}", BOWSIE_USED_PTR, MAGIC_CONSTANT_WRITE).c_str());
+        rom.inline_patch(tool_folder, format("org ${:0>6X} : dd ${:0>8X}", BOWSIE_USED_PTR, MAGIC_CONSTANT_WRITE).c_str());
     }
 
     // Check if custom OW sprites have been enabled.
@@ -883,20 +884,16 @@ if read1($00FFD5) == $23\n\
     !addr = $6000\n\
     !bank = $000000\n\
 endif", settings.slots, settings.replace_original ? '1' : '0', settings.omtre_detect ? '1' : '0', VERSION, SUBVER));
-    ofstream("asm/bowsie_defines.asm").write(defines.c_str(), defines.size());
+    ofstream(tool_folder+"asm/bowsie_defines.asm").write(defines.c_str(), defines.size());
 
     // Shared sub-routines
     string routine_macro(format("incsrc {}_defines.asm\n\n", settings.method));
     string routine_content("freecode cleaned\n\n");
     vector<string> routine_names;
-    for(auto routine : filesystem::directory_iterator("routines"))
+    for(auto routine : filesystem::directory_iterator(tool_folder+"routines"))
     {
         string routine_path(routine.path().string());
-        #ifdef _WIN32
-            string routine_name(routine_path.begin()+routine_path.find_first_of("\\")+1, routine_path.end()-4);
-        #else
-            string routine_name(routine_path.begin()+routine_path.find_first_of("/")+1, routine_path.end()-4);
-        #endif
+        string routine_name(routine.path().stem().string());
         routine_names.push_back(routine_name);
         routine_macro.append(format("macro {0}()\n    JSL {0}_{0}\nendmacro\n\n", routine_name));
         routine_content.append(format("namespace {0}\n    {0}:\n        incsrc \"{1}\"\n    print \"Shared subroutine %{0}() inserted at $\", hex({0})\nnamespace off\n\n",\
@@ -904,7 +901,7 @@ endif", settings.slots, settings.replace_original ? '1' : '0', settings.omtre_de
     }
 
     int offset = 0;
-    if(!rom.inline_patch((routine_macro+routine_content).c_str()))
+    if(!rom.inline_patch(tool_folder, (routine_macro+routine_content).c_str()))
         return error("An error ocurred while inserting shared subroutines. Details:\n  {}", asar_geterrors(&asar_errcount)->fullerrdata);
     else
     {
@@ -928,8 +925,8 @@ endif", settings.slots, settings.replace_original ? '1' : '0', settings.omtre_de
         println("{} shared subroutines inserted.\n{}\n", asar_errcount, settings.verbose ? "===========================================================" : "");
         offset = asar_errcount;
     }
-    ofstream("asm/macro.asm").write(routine_macro.c_str(), routine_macro.size());
-    rom.inline_patch(routine_content.c_str());
+    ofstream(tool_folder+"asm/macro.asm").write(routine_macro.c_str(), routine_macro.size());
+    rom.inline_patch(tool_folder, routine_content.c_str());
 
     // Pointers
     unsigned char * ow_init_ptrs= new unsigned char[0x7E*3] {};
@@ -960,12 +957,14 @@ endif", settings.slots, settings.replace_original ? '1' : '0', settings.omtre_de
             size_t pos {};
             int sprite_number = stoi(sprite, &pos, 16);
             if(sprite_number<0x01 || sprite_number>0x7F) throw out_of_range("");
-
             string sprite_filename(sprite.substr(sprite.find_first_not_of("\t ", pos)));
+            format_path(&sprite_filename);
+            if(!sprite_filename.ends_with(".asm") && !sprite_filename.ends_with(".asm\""))
+                return error("Unknown extension for sprite {}. (Remember the list file looks for the .asm file, NOT the .json tooltip!)", sprite_filename);
             string sprite_labelname(sprite_filename.substr(0, sprite_filename.find_first_of("."))+"_"+to_string(sprite_number));
             if( (ow_init_ptrs[2+(sprite_number-1)*3]<<16 | ow_init_ptrs[1+(sprite_number-1)*3]<<8 | ow_init_ptrs[(sprite_number-1)*3])!=0x048414 ) throw invalid_argument("");
 
-            ifstream curr_sprite("sprites/"+sprite_filename);
+            ifstream curr_sprite(tool_folder+"sprites/"+sprite_filename);
             if(!curr_sprite)
                 return error("Could not open sprite with number {:0>2X} and filename {}. Make sure the sprite exists and is in the sprites directory.", sprite_number, sprite_filename);
             string insert_sprites(format("incsrc {0}_defines.asm\n\
@@ -977,7 +976,7 @@ namespace {1}\n\
     print \"    Init routine inserted at: $\", hex({1}_init)\n\
     print \"    Main routine inserted at: $\", hex({1}_main)\n\
 namespace off\n", settings.method, sprite_labelname, sprite_filename, sprite_number));
-            if(!rom.inline_patch(insert_sprites.c_str()))
+            if(!rom.inline_patch(tool_folder, insert_sprites.c_str()))
                 return error("Could not insert sprite {}. Details: {}\n", sprite_filename, asar_geterrors(&asar_errcount)->fullerrdata);
             else
             {
@@ -1010,7 +1009,7 @@ namespace off\n", settings.method, sprite_labelname, sprite_filename, sprite_num
             }
             if(settings.generate_map16)
             {
-                string sprite_tooltip_path = "sprites/"+string(sprite_filename.begin(), sprite_filename.begin()+sprite_filename.find_first_of(".")+1)+"json";
+                string sprite_tooltip_path = tool_folder+"sprites/"+string(sprite_filename.begin(), sprite_filename.begin()+sprite_filename.find_first_of(".")+1)+"json";
                 ifstream ifs(sprite_tooltip_path);
                 if(!(!ifs))
                 {
@@ -1031,7 +1030,7 @@ namespace off\n", settings.method, sprite_labelname, sprite_filename, sprite_num
                         println("Done.");
                 }
                 else if(settings.verbose)
-                    println("{} has no tooltip info.", sprite_filename);
+                    println("{} has no tooltip information.", sprite_filename);
             }
             println("-----------------------------------------------------------");
             ++sprite_count;
@@ -1046,8 +1045,8 @@ namespace off\n", settings.method, sprite_labelname, sprite_filename, sprite_num
         }
     }
     println("{} sprites inserted.\n===========================================================", sprite_count);
-    ofstream("asm/init_ptrs.bin", ios::binary).write((char *)ow_init_ptrs, 0x7E*3);
-    ofstream("asm/main_ptrs.bin", ios::binary).write((char *)ow_main_ptrs, 0x7E*3);
+    ofstream(tool_folder+"asm/init_ptrs.bin", ios::binary).write((char *)ow_init_ptrs, 0x7E*3);
+    ofstream(tool_folder+"asm/main_ptrs.bin", ios::binary).write((char *)ow_main_ptrs, 0x7E*3);
 
     // Sprite system
     full_patch.append(format("\norg ${:0>6X}\n\
@@ -1056,14 +1055,14 @@ namespace off\n", settings.method, sprite_labelname, sprite_filename, sprite_num
     ow_sprite_main_ptrs:\n\
         incbin main_ptrs.bin\n\n\
     dl $555555", BOWSIE_USED_PTR+4+(offset*3)));
-    if(!rom.inline_patch(full_patch.c_str()))
+    if(!rom.inline_patch(tool_folder, full_patch.c_str()))
         return error("Something went wrong while applying the sprite system. Details:\n  {}", asar_geterrors(&asar_errcount)->fullerrdata);
 
     // Done
     println("All sprites inserted successfully!\nRemember to run the tool again when you insert a custom OW sprite in Lunar Magic.");
     map16.done(string(rom_name+".s16ov").c_str());
     rom.done();
-    if(!cleanup())
+    if(!cleanup(tool_folder))
         return error("Error cleaning up temporary files. Exiting... (Your ROM was still saved anyway)");
     return 0;
 }

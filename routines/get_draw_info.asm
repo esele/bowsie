@@ -16,6 +16,7 @@
 ;===================================================
 
         REP #$10
+        PHP
         BCS +
         LDY !ow_sprite_oam_p
         BRA .start
@@ -64,7 +65,14 @@
         REP #$21
         TYA
         ADC #$0004
-        STA !ow_sprite_oam
+        PLP
+        BCS +
+        STA !ow_sprite_oam_p
+        RTL
+
++       STA !ow_sprite_oam
         CLC
+        RTL
 .return
+        PLP
         RTL
