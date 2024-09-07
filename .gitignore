@@ -17,3 +17,5 @@ sprites/
 *.ifc
 *.obj
 *.pdb
+*.bst
+known issues.txt

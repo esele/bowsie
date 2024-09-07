@@ -16,8 +16,14 @@
 
 padbyte $EA
 
-org $009AA4         ; nuke jump to original ow sprite load (always, even if kept. boy stop running this bs routine...)
+org $009AA4         ; nuke jump to original ow sprite load (always, even if kept. boy slow down running this bs routine...)
     BRA $02 : NOP #2
+
+org $04840D         ; swap the order in which the player is drawn and the sprites are processed
+    JSR $862E
+    JSR $F708
+org $04827E
+    JMP $840D
 
 org $00A165         ; jump to new ow sprite load (this one will run in gamemode $0C)
     if (!bowsie_replace_original|!bowsie_omtre) == 0
@@ -60,13 +66,13 @@ custom_ow_sprite_load_main:
     endif
 .main
     PHB
-    LDA $0EF55E                 ; you wouldn't put this table in WRAM
-    BEQ .end_spawning
-    LDX $0DB3|!addr            ;\
-    LDA $1F11|!addr,x          ; | submap of current player (times 2) into X for index to offset table.
+    ; LDA $0EF55E               ;   you wouldn't put this table in WRAM
+    ; BEQ .end_spawning         ;   ah screw it im obviating this :^)
+    LDX $0DB3|!addr             ;\
+    LDA $1F11|!addr,x           ; | submap of current player (times 2) into X for index to offset table.
     ASL                         ; |
     TAX                         ;/
-    REP #$21                    ; 16 bit for A and CLC
+    REP #$21                    ;   16 bit for A and CLC
     LDA.w #!map_offsets         ;\
     ADC.l !map_offsets,x        ; | get long map pointer into $6B
     STA $6B                     ; | by loading base location and adding the offset for the current map
@@ -82,7 +88,7 @@ custom_ow_sprite_load_main:
     LDA [$6B],y                 ; |
     AND #$1F80                  ; | mask out x bits: ---xxxxx x-------
     XBA                         ; | swap bytes in A: x------- ---xxxXX
-    ROL                         ; | rotate left:      -------- --xxxxxx
+    ROL                         ; | rotate left:     -------- --xxxxxx
     ASL #3                      ; | multiple by 8 because x is in 8x8 blocks, not pixels.
     STA $02                     ;/  store x position (in pixels) in $02
     INY

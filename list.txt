@@ -1,4 +1,7 @@
 1	piranha_plant.asm
 2 fish.asm
 3  goomba.asm
+4 airship.asm
+5 hand.asm
+6 savepoint.asm
 2D bird.asm

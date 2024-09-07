@@ -15,7 +15,7 @@ When you modify your overworld, __you need to rerun _BOWSIE___! Do not forget or
 ### Coding a sprite
 I included the sprites I made for Tob and I's entry on that old OWDC and updated them for your reference.\
 The tool looks for `init` and `main` labels to know where to add the pointers. You'd treat them like that `print "INIT "/"MAIN ",pc` in a _PIXI_ sprite. Unlike those though, you do not need to set the data bank: the handler will do it for you (assuming you use an included one ofc) and therefore there's no need for the `PHB : PHK : PLB : JSR sprite : PLB` stuff. You can put your code directly below the labels. Remember to return with an `RTL`!\
-I included 10 shared subroutines, nine from the VLDC9 sprites and a basic interaction routine by me, so you don't have to paste them in every sprite. They work just like _PIXI_ (for practical purposes): just call `%routine_name()`.
+The tool includes 11 shared subroutines, nine from the VLDC9 sprites, a basic interaction routine by me, and a routine by carol, so you don't have to paste them in every sprite. They work just like _PIXI_ (for practical purposes): just call `%routine_name()`.
 
 ## Settings
 _BOWSIE_ is designed to be a pretty customizable tool with the intention of being versatile, usable both by hackers who just want to insert any sprites without worry for anything else, by power users who would love to customize the inner workings of the tool and deploy it in various hacks without having to copy the tool, and by anyone in between.\
@@ -53,7 +53,7 @@ Depending on the settings chosen will be where the handler is put.
  * If you are keeping the original sprites and don't use _OPSE_, everything goes in freespace. The main call is also at `$04F708`.
 
 The tool puts its pointers in a free area in bank 4. By default, this is at `$04EF3E`. Here, the first four bytes are the tool's signature `0x00CAC705` (00cactus), to know whether to perform freespace cleanup in later executions; the pointers to the shared subroutines; the init routine pointers for all 127 sprites; and the main routine pointers. The tool finalises this by writing `0x555555` at the end, to know when to stop cleaning. Unused sprites set both pointers to an `RTL` in bank 4, namely `$048414`, to avoid crashes on accidental insertion.\
-If I counted correctly, with the defualt subroutines and accounting for all the routine pointers, there's space for about 13 more routines (there's `0x29` free bytes by default)
+If I counted correctly, with the defualt subroutines and accounting for all the routine pointers, there's space for about 12 more routines (there's `0x26` free bytes by default)
 Obviously, a custon system would need to accound for where to run and where its code will go. Still, the defines generated might help you if you want to publish your system to the public!\
 The way routines are inserted varies slightly with _PIXI_. _BOWSIE_ inserts every routine first, then creates the call macros which are simply a `JSL routine` instruction. What _PIXI_ does is put the routine inside a macro, _then_ give you the `JSL` when you call said macro. That's why _PIXI_ routines use macro labels and _BOWSIE_'s don't.
 

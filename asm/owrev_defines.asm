@@ -1,6 +1,3 @@
-; In Lui's system, all sprite tables are 16 bit, with the sprite index in X
-; and discontiguous tables, just like in the base vanilla sprites.
-
 incsrc bowsie_defines.asm       ; don't delete this! it's created during the tool run.
 
 !oam_start_p    = $0000
@@ -8,8 +5,8 @@ incsrc bowsie_defines.asm       ; don't delete this! it's created during the too
 !oam_limit      = $01E8
 
 macro define_ow_sprite_table(name, address)
-        !<name> = $<address>|!addr
-        !<address> = !<name>
+    !<name>     #= $<address>|!addr
+    !<address>  #= !<name>
 endmacro
 
 ;   Tables
