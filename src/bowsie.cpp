@@ -3,7 +3,7 @@ import rapidjson;
 import asar;
 
 #define VERSION 1
-#define SUBVER 2
+#define SUBVER 3
 
 using namespace std;
 using namespace rapidjson;
@@ -413,7 +413,7 @@ struct Map16
                 status = false;
             }
             else
-                this->y_flip.push_back((*json)[curr]["y_flip"].GetInt());
+                this->y_flip.push_back((*json)[curr]["y_flip"].GetBool());
             if(!(*json)[curr]["x_flip"].IsBool())
             {
                 (*err_str).append("Incorrect data type for x_flip:\t\texpected Boolean\n");
@@ -467,7 +467,7 @@ struct Map16
     */
     void open_sscov(const char * filename)
     {
-        ofstream(filename, ios::app).write("", 1);
+        ofstream(filename, ios::app).write("", 0);
         sscov = ofstream(filename, ios::app);
     }
 
@@ -540,7 +540,7 @@ struct Map16
                 return map16_numbers;
             }
             int tile = tile_num[i];
-            int yxppccct = (y_flip[i]<<7)|(x_flip[i]<<6)|((priority[i]&3)<<4)|((palette[i]%8)<<2)|(second_page[i]);
+            int yxppccct = (y_flip[i]<<7)|(x_flip[i]<<6)|((priority[i]&1)<<5)|((palette[i]%8)<<2)|(second_page[i]);
             tile_num.pop_back();
             y_flip.pop_back();
             x_flip.pop_back();
@@ -549,10 +549,28 @@ struct Map16
             second_page.pop_back();
             if(is_16x16[i])
             {
-                if(!write_single_map16_tile(tile, yxppccct, pos) ||
-                   !write_single_map16_tile(tile+0x10, yxppccct, pos+2) ||
-                   !write_single_map16_tile(tile+0x01, yxppccct, pos+4) ||
-                   !write_single_map16_tile(tile+0x11, yxppccct, pos+6))
+                bool tmp;
+                if(x_flip[i] && y_flip[i])
+                    tmp = !write_single_map16_tile(tile+0x11, yxppccct, pos) ||\
+                   !write_single_map16_tile(tile+0x01, yxppccct, pos+2) ||\
+                   !write_single_map16_tile(tile+0x10, yxppccct, pos+4) ||\
+                   !write_single_map16_tile(tile, yxppccct, pos+6);
+                else if(x_flip[i])
+                    tmp = !write_single_map16_tile(tile+0x01, yxppccct, pos) ||\
+                   !write_single_map16_tile(tile+0x11, yxppccct, pos+2) ||\
+                   !write_single_map16_tile(tile, yxppccct, pos+4) ||\
+                   !write_single_map16_tile(tile+0x10, yxppccct, pos+6);
+                else if(y_flip[i])
+                    tmp =!write_single_map16_tile(tile+0x10, yxppccct, pos) ||\
+                   !write_single_map16_tile(tile, yxppccct, pos+2) ||\
+                   !write_single_map16_tile(tile+0x11, yxppccct, pos+4) ||\
+                   !write_single_map16_tile(tile+0x01, yxppccct, pos+6);
+                else
+                    tmp = !write_single_map16_tile(tile, yxppccct, pos) ||\
+                   !write_single_map16_tile(tile+0x10, yxppccct, pos+2) ||\
+                   !write_single_map16_tile(tile+0x01, yxppccct, pos+4) ||\
+                   !write_single_map16_tile(tile+0x11, yxppccct, pos+6);
+                if(tmp)
                 {
                     map16_numbers[i] = -1;
                     (*err_string).append(format("Not enough map16 space while writing part of a 16x16 tile. Position is {}", pos));
@@ -571,7 +589,6 @@ struct Map16
                 map16_numbers[i] = (pos/8)+0x400;
             }
         }
-        is_16x16.assign({});
         return map16_numbers;
     }
 
@@ -587,18 +604,25 @@ struct Map16
     */
     bool write_tooltip(int sprite_number, string * err_string)
     {
-        string str = format("{:x}\t10\t{}\n", sprite_number, tooltip);
+        string str = format("{:X}\t10\t{}\n", sprite_number, tooltip);
         sscov.write(str.c_str(), str.size());
         int * map16_numbers = write_map16_tiles(err_string);
-        for(int i=0;i<no_tiles;i+=4)
+        str = format("{:X}\t12\t", sprite_number);
+        for(int i=0;i<no_tiles;)
         {
             if(map16_numbers[i]==-1)
                 return false;
-            str = format("{:x}\t12\t{},{},{:X}\n", sprite_number, x_offset[i], y_offset[i], map16_numbers[i]);
-            sscov.write(str.c_str(), str.size());
+            str.append(format("{},{},{:X}\t", x_offset[i], y_offset[i], map16_numbers[i]));
             x_offset.pop_back();
             y_offset.pop_back();
+            if(!is_16x16[i])
+                i+=4;
+            else
+                ++i;
         }
+        if(no_tiles!=0)
+            sscov.write((str+"\n").c_str(), str.size()+1);
+        is_16x16.assign({});
         x_offset.assign({});
         y_offset.assign({});
         return true;
@@ -1000,6 +1024,10 @@ endif\n", settings.slots, settings.replace_original ? '1' : '0', settings.omtre_
         try
         {
             size_t pos {};
+            if(sprite.find_first_not_of("\t ")==string::npos)
+                continue;
+            if(sprite.starts_with(";"))
+                continue;
             int sprite_number = stoi(sprite, &pos, 16);
             if(sprite_number<0x01 || sprite_number>0x7F) throw out_of_range("");
             string sprite_filename(sprite.substr(sprite.find_first_not_of("\t ", pos)));

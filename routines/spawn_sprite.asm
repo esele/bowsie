@@ -35,6 +35,7 @@
         LDA $08
         AND #$00FF
         STA !ow_sprite_extra_bits,x
+        STZ !ow_sprite_init,x
         STZ !ow_sprite_speed_x,x
         STZ !ow_sprite_speed_x_acc,x
         STZ !ow_sprite_speed_y,x

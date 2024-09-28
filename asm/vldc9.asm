@@ -66,18 +66,17 @@ custom_ow_sprite_load_main:
     endif
 .main
     PHB
-    ; LDA $0EF55E               ;   you wouldn't put this table in WRAM
-    ; BEQ .end_spawning         ;   ah screw it im obviating this :^)
     LDX $0DB3|!addr             ;\
     LDA $1F11|!addr,x           ; | submap of current player (times 2) into X for index to offset table.
     ASL                         ; |
-    TAX                         ;/
-    REP #$21                    ;   16 bit for A and CLC
-    LDA.w #!map_offsets         ;\
-    ADC.l !map_offsets,x        ; | get long map pointer into $6B
-    STA $6B                     ; | by loading base location and adding the offset for the current map
-    LDY.b #!map_offsets>>16     ; | 
-    STY $6D                     ;/
+    TAY                         ;/
+    LDA.l $0EF55D+2             ;\
+    STA.b $6B+2                 ; |
+    REP #$21                    ; |
+    LDA $0EF55D                 ; | get pointer to OW sprite table
+    STA $6B                     ; |
+    ADC [$6B],y                 ; |
+    STA $6B                     ;/
 
     LDY #$00                    ; loop counter = 0
 .sprite_load_loop               ; loop for decoding sprite data and spawning sprite.
@@ -88,8 +87,9 @@ custom_ow_sprite_load_main:
     LDA [$6B],y                 ; |
     AND #$1F80                  ; | mask out x bits: ---xxxxx x-------
     XBA                         ; | swap bytes in A: x------- ---xxxXX
+    ASL
     ROL                         ; | rotate left:     -------- --xxxxxx
-    ASL #3                      ; | multiple by 8 because x is in 8x8 blocks, not pixels.
+    ASL #2                      ; | multiple by 8 because x is in 8x8 blocks, not pixels.
     STA $02                     ;/  store x position (in pixels) in $02
     INY
 
@@ -120,6 +120,7 @@ custom_ow_sprite_load_main:
     BCC .end_spawning           ; |      Carry: Clear = No Spawn, Set = Spawn
                                 ;/      Y:      Sprite Index (for RAM addresses) 
     INY
+    CLC
     BRA .sprite_load_loop
 
 .end_spawning

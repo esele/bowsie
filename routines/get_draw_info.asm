@@ -75,4 +75,5 @@
         RTL
 .return
         PLP
+        SEC
         RTL
