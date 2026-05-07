@@ -1,3 +1,9 @@
+BOWSIE v1.21
+---
+### Fixes
+- Fixed the incorrect extra byte offset being considered when running meOWmeOW on OW Revolution ROMs. This meant meOWmeOW always ran in them. Mostly inconsequential, but...
+- Fixed a meOWmeOW bug when using OW Revolution, where an incorrect offset was being added to sprite data when reading an `0xFF` byte not followed by a `0xFE` (terminator). This caused the data to misalign and BOWSIE could even crash. Thanks to Stivi for discovering this and helping me reproduce! (that after a couple hours of thinking his ROM was cursed LOL)
+
 BOWSIE v1.20
 ---
 ### Features

@@ -49,7 +49,7 @@
 #include "include/settings.h"
 
 #define VERSION 1
-#define SUBVER 20
+#define SUBVER 21
 
 using ios = std::ios;
 
