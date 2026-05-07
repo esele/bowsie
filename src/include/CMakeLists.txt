@@ -25,7 +25,7 @@ FetchContent_Declare(
     GIT_TAG        40626af88bd7df9a5fb80be7b25ac85b122d6c21
 )
 FetchContent_MakeAvailable(fmt)
-  
+
 FetchContent_Declare(
     asar
     GIT_REPOSITORY https://github.com/RPGHacker/asar
@@ -38,7 +38,7 @@ FetchContent_Declare(json URL https://github.com/nlohmann/json/releases/download
 FetchContent_MakeAvailable(json)
 
 set_target_properties(${ASAR_TARGET} PROPERTIES CXX_STANDARD 14)
-    
+
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
     if(ASAR_DYNAMIC_LINK)
         set_target_properties(${ASAR_TARGET} PROPERTIES COMPILE_OPTIONS "-w")

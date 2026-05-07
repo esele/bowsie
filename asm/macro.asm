@@ -20,7 +20,7 @@ endmacro
 macro maxtile_clear_databank()
     if !bowsie_maxtile
         PLB
-    
+
         bank auto
     endif
 endmacro

@@ -21,7 +21,7 @@
     STA !ow_sprite_x_pos,x
 .return
     RTL
-    
+
 .negative
     EOR #$FFFF
     INC

@@ -91,7 +91,7 @@ custom_ow_sprite_load_main:
     AND #$F800                  ; | mask out z bits: zzzzz--- --------
     XBA                         ; | swap bytes:        -------- zzzzz---
     STA $06                     ;/ store z position (in pixel) in $06
-    
+
     INY #2                      ;\ 
     PHY                         ; | gotta save Y if we'll use this routine
     LDA [$6B],y                 ; | get high word or sprite data (____ ____  eeee eeee)
@@ -238,7 +238,7 @@ execute_ow_sprite_init:
     SEP #$20                        ; | sprite number 00 is <end> so the table
     LDA.l ow_sprite_init_ptrs-1,x   ; | is actually 1 indexed (hence those subtractions)
     STA $02                         ;/
-    
+
     PHA                             ;\ 
     PLB                             ; | Setup bank (value still in A)
     REP #$20                        ; | A in 16 bit

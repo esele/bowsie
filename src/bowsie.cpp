@@ -169,7 +169,7 @@ int main(int argc, char *argv[])
         settings_path.append("bowsie-config.json");
 
         bool process_json = false;
-    
+
         std::ifstream ifs(settings_path);
         if(!ifs)
         {

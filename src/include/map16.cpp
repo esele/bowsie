@@ -47,12 +47,12 @@ bool Map16::deserialize_json(nlohmann::json& json, std::string* err_str)
     }
     else
         this->no_tiles = json["no_tiles"].get<int>();
-        
+
     if(no_tiles < 0)
     {
         (*err_str) = status ? "no_tiles must not be negative." : (*err_str).erase((*err_str).size()-2, 2).append("\nno_tiles must not be negative.");
     }
-    
+
     (*err_str) = status ? "Couldn't find tile(s):\t\t\t\t" : (*err_str).erase((*err_str).size()-2, 2).append("\nCouldn't find key(s):\t\t\t\t");
 
     for(int i=1;i<=no_tiles;++i)
