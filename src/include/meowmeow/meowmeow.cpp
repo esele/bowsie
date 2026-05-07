@@ -48,7 +48,7 @@ namespace meOWmeOW {
         {
             for (int i = 0; i < 0x7F; ++i)
             {
-                if (rom.old_extra_bytes[i + lm351_offset] != rom.new_extra_bytes[i])
+                if (rom.old_extra_bytes[i + (lm351_offset|ow_rev)] != rom.new_extra_bytes[i])
                 {
                     run_meowmeow = true;
                     break;
@@ -82,7 +82,7 @@ namespace meOWmeOW {
             rom.rom_data.clear();
             rom.rom_data.seekg(snestopc_pick(rom.rom_mapper, (rom.read<2>(LVL_SPRITE_DATA_PTR + (curr_map * 2), true)) | \
                                                          (rom.read<1>(LVL_SPRITE_DATA_PTR_BANK + curr_map) << 16)) + HEADER_SIZE);
-            
+
             // Sprite header - see https://smwspeedruns.com/Level_Data_Format#Sprite_Header
             uint8_t sprite_header = rom.rom_data.get();
             bool exlevel = sprite_header & 0x20;
@@ -100,60 +100,63 @@ namespace meOWmeOW {
                     // FF byte - if this isn't a big level, it's the terminator, we're out
                     if (!exlevel)
                         break;
-                        
-                        // This is a big level. Next byte being FE is the terminator in this case
+
+                    // This is a big level. Next byte being FE is the terminator in this case
                     sprite_XXXXssss = rom.rom_data.get();
                     new_sprite_data.push_back(sprite_XXXXssss);
                     if (sprite_XXXXssss == 0xFE)
                         break;
+
+                    // Not FE, then this is a position jump and the next byte is yyyyEESY again.
                 }
                 else
                 {
                     // No FF byte
                     sprite_XXXXssss = rom.rom_data.get();
                     new_sprite_data.push_back(sprite_XXXXssss);
-                }
 
-                // Third always present byte is the sprite number
-                uint8_t sprite_NNNNNNNN = rom.rom_data.get();
-                new_sprite_data.push_back(sprite_NNNNNNNN);
+                    // Third always present byte is the sprite number
+                    uint8_t sprite_NNNNNNNN = rom.rom_data.get();
+                    new_sprite_data.push_back(sprite_NNNNNNNN);
 
-                auto true_ow_sprite_num = sprite_NNNNNNNN + ((sprite_yyyyEESY & 0x0C) << 6);
-                if (((sprite_yyyyEESY & 0x0C) == 0x04) && (sprite_NNNNNNNN != 0x00) && (sprite_NNNNNNNN < 0x80))
-                {
-                    // Well-formed OWRev overworld sprite (extra bit 1 and between 01 and 7F)
-                    int old_extra = rom.old_extra_bytes[sprite_NNNNNNNN] - 0x03;
-                    int new_extra = rom.new_extra_bytes[sprite_NNNNNNNN - 1] - 0x03;
-
-                    if (old_extra <= new_extra)
+                    auto true_ow_sprite_num = sprite_NNNNNNNN + ((sprite_yyyyEESY & 0x0C) << 6);
+                    if (((sprite_yyyyEESY & 0x0C) == 0x04) && (sprite_NNNNNNNN != 0x00) && (sprite_NNNNNNNN < 0x80))
                     {
-                        // The same amount of extra bytes: copy the same data
-                        for (int i = 0; i < old_extra; ++i)
-                            new_sprite_data.push_back((uint8_t)(rom.rom_data.get()));
+                        // Well-formed OWRev overworld sprite (extra bit 1 and between 01 and 7F)
+                        int old_extra = rom.old_extra_bytes[sprite_NNNNNNNN] - 0x03;
+                        int new_extra = rom.new_extra_bytes[sprite_NNNNNNNN - 1] - 0x03;
 
-                        // More extra bytes: fill new with 00
-                        for (int i = old_extra; i < new_extra; ++i)
-                            new_sprite_data.push_back(0x00);
+                        if (old_extra <= new_extra)
+                        {
+                            // The same amount of extra bytes: copy the same data
+                            for (int i = 0; i < old_extra; ++i)
+                                new_sprite_data.push_back((uint8_t)(rom.rom_data.get()));
+
+                            // More extra bytes: fill new with 00
+                            for (int i = old_extra; i < new_extra; ++i)
+                                new_sprite_data.push_back(0x00);
+                        }
+                        else
+                        {
+                            // Less extra bytes: only copy the required ones
+                            for (int i = 0; i < new_extra; ++i)
+                                new_sprite_data.push_back((uint8_t)(rom.rom_data.get()));
+
+                            // Discard the rest of the old extra bytes
+                            for (int i = new_extra; i < old_extra; ++i)
+                                rom.rom_data.get();
+                        }
+
                     }
                     else
                     {
-                        // Less extra bytes: only copy the required ones
-                        for (int i = 0; i < new_extra; ++i)
+                        // Ill-formed sprite. Still, we gotta proof for whatever edited OWRev code someone is using.
+                        // ...or for idiots.
+                        int extra = old_level_extra_bytes[true_ow_sprite_num] - 0x03;
+                        for (int i = 0; i < extra; ++i)
                             new_sprite_data.push_back((uint8_t)(rom.rom_data.get()));
-
-                        // Discard the rest of the old extra bytes
-                        for (int i = new_extra; i < old_extra; ++i)
-                            rom.rom_data.get();
                     }
 
-                }
-                else
-                {
-                    // Ill-formed sprite. Still, we gotta proof for whatever edited OWRev code someone is using.
-                    // ...or for idiots.
-                    int extra = old_level_extra_bytes[true_ow_sprite_num] - 0x03;
-                    for (int i = 0; i < extra; ++i)
-                        new_sprite_data.push_back((uint8_t)(rom.rom_data.get()));
                 }
 
                 if (new_sprite_data.size() > SPRITE_SIZE_LIMIT)
@@ -186,7 +189,7 @@ new_sprite_data:\n\
 
             if (!rom.inline_patch(tool_folder, meowmeow_patch.c_str()))
                 return false;
-            
+
             new_sprite_data.assign({});
         }
 
