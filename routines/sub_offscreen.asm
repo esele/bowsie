@@ -36,7 +36,7 @@
         CLC
         ADC #!offs_threshold_x
     endif
-    if !bowsie_widescreen_ow    ;   widescreen overworld check
+    if and(not(!bowsie_owrev), !bowsie_widescreen_ow)    ;   widescreen overworld check
         CMP.w #$FFF0-(!offs_threshold_x*2)
         BCS +
     endif
