@@ -42,6 +42,7 @@
         LSR #2
         TAX
     endif
+    LDA #$0000
     SEP #$21
     if !bowsie_maxtile
         PHB
